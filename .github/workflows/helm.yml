@@ -1,17 +1,10 @@
 name: Helm Chart
 
 on:
-  push:
-    branches: [main, staging, dev]
-    paths:
-      - 'helm/sim/**'
-      - '.github/workflows/helm.yml'
   pull_request:
-    branches: [main, staging, dev]
-    paths:
-      - 'helm/sim/**'
-      - '.github/workflows/helm.yml'
-
+    types: [labeled, unlabeled, opened, synchronize, reopened, ready_for_review, edited]
+  schedule:
+    - cron: '51 20 * * *'
 concurrency:
   group: helm-${{ github.ref }}
   cancel-in-progress: true
@@ -21,6 +14,7 @@ permissions:
 
 jobs:
   chart:
+    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'release')) }}
     name: Lint, test, and validate chart
     runs-on: ${{ (vars.CI_PROVIDER == '' || vars.CI_PROVIDER == 'blacksmith') && 'blacksmith-2vcpu-ubuntu-2404' || 'ubuntu-latest' }}
     timeout-minutes: 15
@@ -103,7 +97,7 @@ jobs:
 
   version-bump:
     name: Chart version bumped
-    if: github.event_name == 'pull_request'
+    if: ${{ (github.event_name == 'pull_request') && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'release'))) }}
     runs-on: ${{ (vars.CI_PROVIDER == '' || vars.CI_PROVIDER == 'blacksmith') && 'blacksmith-2vcpu-ubuntu-2404' || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:
@@ -130,6 +124,7 @@ jobs:
           fi
 
   install:
+    if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'release')) }}
     name: Install on kind and run helm test
     needs: chart
     runs-on: ${{ (vars.CI_PROVIDER == '' || vars.CI_PROVIDER == 'blacksmith') && 'blacksmith-4vcpu-ubuntu-2404' || 'ubuntu-latest' }}

@@ -19,13 +19,7 @@ on:
   push:
     branches: [main, staging, dev]
   pull_request:
-    branches: [main, staging, dev]
-    # Docs content and markdown don't affect the app build or images; push
-    # runs stay unfiltered because they feed the deploy pipeline.
-    paths-ignore:
-      - 'apps/docs/content/**'
-      - '**/*.md'
-
+    types: [labeled, unlabeled, opened, synchronize, reopened, ready_for_review, edited]
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -36,7 +30,7 @@ permissions:
 jobs:
   test-build:
     name: Test and Build
-    if: github.ref != 'refs/heads/dev' || github.event_name == 'pull_request'
+    if: ${{ (github.event_name == 'push' && github.ref != 'refs/heads/dev') || (github.event_name == 'schedule' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'release'))) }}
     uses: ./.github/workflows/test-build.yml
     secrets: inherit
 

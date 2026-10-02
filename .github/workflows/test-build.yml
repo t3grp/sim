@@ -3,6 +3,8 @@ name: Test and Build
 on:
   workflow_call:
   workflow_dispatch:
+  schedule:
+    - cron: '50 19 * * *'
 
 permissions:
   contents: read

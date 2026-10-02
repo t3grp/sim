@@ -18,8 +18,6 @@ on:
   # affordable and is what GitHub recommends pairing with the PR trigger:
   # "Scanning code when someone pushes a change, and whenever a pull request is
   # created, prevents developers from introducing new vulnerabilities."
-  push:
-    branches: [main]
   # main only, not staging. Feature PRs land on staging and are ~90% of PR scan
   # volume, and every one of them is scanned again — against the exact tree being
   # promoted — when the staging->main PR opens. Scanning at the promotion
@@ -29,22 +27,7 @@ on:
   # `synchronize` would have scanned each PR's first commit and never its final
   # state, which is backwards, since review fixups land in later pushes.
   pull_request:
-    branches: [main]
-    # `ready_for_review` is not a default activity type, so it has to be listed
-    # alongside the defaults it replaces. Without it, a PR opened as a draft and
-    # then marked ready is skipped by the job-level draft guard and never
-    # rescanned until the next push.
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - '**/*.ts'
-      - '**/*.tsx'
-      - '**/*.js'
-      - '**/*.jsx'
-      - '**/*.mjs'
-      - '**/*.cjs'
-      - '.github/workflows/**'
-      - '.github/actions/**'
-      - '.github/codeql/**'
+    types: [labeled, unlabeled, opened, synchronize, reopened, ready_for_review, edited]
   schedule:
     # Safety net behind the push trigger, and the thing that keeps the
     # default-branch alert view fresh when main is quiet. Only fires once this
@@ -77,7 +60,7 @@ jobs:
     # run, so 8 vCPU was 4x more machine than it ever used.
     runs-on: ${{ (vars.CI_PROVIDER == '' || vars.CI_PROVIDER == 'blacksmith') && matrix.bs_runner || 'ubuntu-latest' }}
     timeout-minutes: 60
-    if: github.event.pull_request.draft != true
+    if: ${{ (github.event.pull_request.draft != true) && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'release'))) }}
     permissions:
       security-events: write
       contents: read
